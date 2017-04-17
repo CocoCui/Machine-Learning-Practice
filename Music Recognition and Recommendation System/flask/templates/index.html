@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+
+<html> 
+<head>
+  <meta http-equiv="Conten-Type" content="text/html; charset=utf-8">
+  <link rel="stylesheet" href="/static/style.css"> 
+  <link rel="stylesheet" href="http://cdn.bootcss.com/bootstrap/3.3.5/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4"><center><h1>Music Boys</h1></center></div>
+  </div>  
+  <div class="row top30"></div> 
+  <div class="row">
+    <div class="col-md-2 col-md-offset-5">
+      <center>
+        <button type="button" class="btn btn-primary btn-block recordButton">
+          Record
+        </button>
+      </center>
+    </div>
+
+  </div>
+  <div class="row top10"></div>
+  <div class="row">
+    <div class="col-md-6 col-md-offset-3">
+      <center>
+        <div class="searchAudio">
+        </div>
+      </center>
+    </div>
+  </div>
+  </div>
+  <div class="row top30"></div>
+  <div class="row">
+    <div class='col-md-6 col-md-offset-3'>
+      <center>
+        <h3 class="wait"></h3>
+      </center>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6 col-md-offset-3">
+      <table class="table table-hover">
+      </table>
+    </div>  
+  </div>
+</div>
+
+<script src="/static/recorder.js"></script>
+<script src="http://cdn.bootcss.com/jquery/1.11.3/jquery.min.js"></script>
+<script src="http://cdn.bootcss.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+<script>
+  var audio_context;
+  var recorder;
+  var state = 0;
+  var sec = 0;
+  var timer;
+  function startUserMedia(stream) {
+    var input = audio_context.createMediaStreamSource(stream);
+    recorder = new Recorder(input);
+  }
+
+  function startRecording() {
+    recorder && recorder.record();
+  }
+  function updateWait() {
+    $('.wait').text('Please wait ... ('+(++sec)+'s)');
+  }
+  function uploadAudio(blob) {
+    $('.searchAudio').empty();
+    $('.searchAudio').append($('<p/>').append($("<audio/>", {src: URL.createObjectURL(blob), 
+              preload: "auto", controls: ""})))
+    var fd = new FormData();
+    fd.append('fname', 'test.wav');
+    fd.append('file', blob);
+    sec = 0;
+    $('.wait').text('Please wait ... (0s)')
+    $('table').empty()
+    timer = setInterval(updateWait, 1000);
+    $.ajax({
+      type: 'POST',
+      url: '/upload',
+      data: fd,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      cache: false,
+      success: function(data) {
+        $('table').empty();
+        var headW = 'col-md-3';
+        var playW = 'col-md-3';
+        var nameW = 'col-md-6'
+        for (var i = 0; i < 10; i ++) {
+          if (i == 0) {
+            var tr = $('<tr/>')
+                     .append($('<td/>', {class: headW}).append($('<h3/>').append($('<b/>').text('#'+(i+1)))))
+                     .append($('<td/>', {class: nameW}).append($('<h3/>').append($('<a/>', {href:'/song/'+data[i][0]}).append($('<b/>').text(data[i][1])))))
+            tr.append($('<td/>')
+            .append($('<td/>', {class: playW}).append($('<h3/>').append($('<audio/>', {src: '/static/music/'+data[i][1]+'.wav', controls:"", preload: "none", class:'play'})))))
+          }
+          else if (i==1){
+            var tr = $('<tr/>')
+                     .append($('<td/>', {class: headW}).append($('<h4/>').append($('<b/>').text('#'+(i+1)))))
+                     .append($('<td/>', {class: nameW}).append($('<h4/>').append($('<a/>', {href:'/song/'+data[i][0]}).append($('<b/>').text(data[i][1])))))
+            tr.append($('<td/>')
+            .append($('<td/>', {class: playW}).append($('<h4/>').append($('<audio/>', {src: '/static/music/'+data[i][1]+'.wav', controls:"", preload: "none", class:'play'})))))
+          }
+          else if (i==2){
+            var tr = $('<tr/>')
+                     .append($('<td/>', {class: headW}).append($('<h5/>').append($('<b/>').text('#'+(i+1)))))
+                     .append($('<td/>', {class: nameW}).append($('<h5/>').append($('<a/>', {href:'/song/'+data[i][0]}).append($('<b/>').text(data[i][1])))))
+            tr.append($('<td/>')
+            .append($('<td/>', {class: playW}).append($('<h5/>').append($('<audio/>', {src: '/static/music/'+data[i][1]+'.wav', controls:"", preload: "none", class:'play'})))))
+          }
+          else {
+            var tr = $('<tr/>')
+                     .append($('<td/>', {class: headW}).append($('<b/>').text('#'+(i+1))))
+                     .append($('<td/>', {class: nameW}).append($('<a/>', {href:'/song/'+data[i][0]}).append($('<b/>').text(data[i][1]))))
+            tr.append($('<td/>')
+            .append($('<td/>', {class: playW}).append($('<div/>').append($('<audio/>', {src: '/static/music/'+data[i][1]+'.wav', controls:"", preload: "none", class:'play'})))))
+          }
+         
+          $('table').append(tr);
+          clearInterval(timer);
+          $('.wait').text('');
+        }
+      }
+    });
+}
+
+  function stopRecording() {
+    recorder && recorder.stop();
+    //do something
+    recorder.exportWAV(uploadAudio);
+    recorder.clear();
+  }
+
+  function update(){
+    $('.recordButton').text('Stop (' + ((++sec) * 0.1).toFixed(1) + 's)');
+  }
+
+  window.onload = function init() {
+    try {
+      // webkit shim
+      window.AudioContext = window.AudioContext || window.webkitAudioContext;
+      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
+      window.URL = window.URL || window.webkitURL;
+      
+      audio_context = new AudioContext;
+    } catch (e) {
+      alert('No web audio support in this browser!');
+    }
+    navigator.getUserMedia({audio: true}, startUserMedia, function(e) {
+      alert('No live audio input: ' + e);
+    });
+
+    $('.recordButton').click(function() {
+      if (state == 0) {
+        $(this).text('Stop (0.0s)');
+        $(this).removeClass('btn-primary').addClass('btn-danger');
+        state = 1;
+        sec = 0;
+        timer = setInterval(update, 100);
+        startRecording();
+      }
+      else {
+        $(this).text('Record');
+        $(this).removeClass('btn-danger').addClass('btn-primary');
+        state = 0;
+        clearInterval(timer);
+        stopRecording();
+      }
+    });
+  };
+</script>
+
+  
+</body>
+
+</html>
